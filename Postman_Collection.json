@@ -1,0 +1,417 @@
+{
+  "info": {
+    "name": "Paystack Payment Service",
+    "description": "Collection for testing Paystack Payment API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Initialize Payment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"paymentIntentId\", jsonData.data.paymentIntentId);",
+              "    pm.environment.set(\"clientSecret\", jsonData.data.clientSecret);",
+              "    console.log(\"Payment Intent ID saved: \" + jsonData.data.paymentIntentId);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 50000,\n  \"currency\": \"KES\",\n  \"email\": \"customer@example.com\",\n  \"description\": \"Order #12345 - Purchase of items\",\n  \"callbackUrl\": \"https://yourapp.com/payment/callback\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/payments/initialize",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "payments",
+            "initialize"
+          ]
+        },
+        "description": "Initialize a new payment session with Paystack"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"currency\": \"KES\",\n  \"email\": \"customer@example.com\",\n  \"description\": \"Order #12345\",\n  \"callbackUrl\": \"https://yourapp.com/payment/callback\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/payments/initialize",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "initialize"
+              ]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"data\": {\n    \"paymentIntentId\": \"ORDER-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6\",\n    \"clientSecret\": \"AC_test_xxxxxxxxxxxxxxxxxxxx\",\n    \"status\": \"initialized\",\n    \"authorizationUrl\": \"https://checkout.paystack.com/...\",\n    \"accessCode\": \"access_code_xxx\",\n    \"reference\": \"ref_xxx\"\n  },\n  \"message\": \"Payment initialized successfully\",\n  \"success\": true\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify Payment",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// This test uses the paymentIntentId saved from Initialize Payment"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/payments/verify?reference={{paymentIntentId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "payments",
+            "verify"
+          ],
+          "query": [
+            {
+              "key": "reference",
+              "value": "{{paymentIntentId}}"
+            }
+          ]
+        },
+        "description": "Verify if a payment was successful using the reference"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/payments/verify?reference=ORDER-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "verify"
+              ],
+              "query": [
+                {
+                  "key": "reference",
+                  "value": "ORDER-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"data\": true,\n  \"message\": \"Payment verified successfully\",\n  \"success\": true\n}"
+        },
+        {
+          "name": "Failed Payment",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/payments/verify?reference=ORDER-failed",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "verify"
+              ],
+              "query": [
+                {
+                  "key": "reference",
+                  "value": "ORDER-failed"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"data\": false,\n  \"message\": \"Payment verification failed\",\n  \"success\": false\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Payment Details",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/payments/details?reference={{paymentIntentId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "payments",
+            "details"
+          ],
+          "query": [
+            {
+              "key": "reference",
+              "value": "{{paymentIntentId}}"
+            }
+          ]
+        },
+        "description": "Get detailed payment information from Paystack"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/payments/details?reference=ORDER-a1b2c3d4",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "details"
+              ],
+              "query": [
+                {
+                  "key": "reference",
+                  "value": "ORDER-a1b2c3d4"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"data\": {\n    \"id\": 123456789,\n    \"domain\": \"test\",\n    \"status\": \"success\",\n    \"reference\": \"ref_xxx\",\n    \"amount\": 50000,\n    \"currency\": \"KES\",\n    \"paid_at\": \"2026-02-08T12:34:56.000Z\",\n    \"customer\": {\n      \"id\": 987654321,\n      \"first_name\": \"Customer\",\n      \"last_name\": \"Name\",\n      \"email\": \"customer@example.com\",\n      \"phone\": null\n    }\n  },\n  \"message\": \"Payment details retrieved\",\n  \"success\": true\n}"
+        }
+      ]
+    },
+    {
+      "name": "Paystack Callback",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/payments/callback?reference={{paymentIntentId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "payments",
+            "callback"
+          ],
+          "query": [
+            {
+              "key": "reference",
+              "value": "{{paymentIntentId}}"
+            }
+          ]
+        },
+        "description": "Handle Paystack callback after payment completion. This is typically called by Paystack after user completes payment."
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/payments/callback?reference=ORDER-a1b2c3d4",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "reference",
+                  "value": "ORDER-a1b2c3d4"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "text/plain"
+            }
+          ],
+          "body": "Payment successful! Reference: ORDER-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6"
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/payments/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "payments",
+            "health"
+          ]
+        },
+        "description": "Check if the payment service is running and healthy"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/payments/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "payments",
+                "health"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"data\": \"OK\",\n  \"message\": \"Paystack payment service is running\",\n  \"success\": true\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "paymentIntentId",
+      "value": "",
+      "type": "string",
+      "description": "Payment Intent ID from Initialize Payment endpoint (auto-populated)"
+    },
+    {
+      "key": "clientSecret",
+      "value": "",
+      "type": "string",
+      "description": "Client Secret from Initialize Payment endpoint (auto-populated)"
+    }
+  ]
+}
+
