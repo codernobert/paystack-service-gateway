@@ -1,47 +1,78 @@
-# Paystack Payment Spring Boot Starter
+# Paystack Payment Service
 
-A reusable Spring Boot starter library for easy Paystack payment integration in microservices. This library encapsulates Paystack API communication, provides reactive programming support via Spring WebFlux, and includes resilience patterns (circuit breaker, retry, time limiter).
+A reusable Spring Boot service for easy Paystack payment integration in microservices. This service encapsulates Paystack API communication, provides reactive programming support via Spring WebFlux, and includes resilience patterns (circuit breaker, retry, time limiter).
 
 ## Features
 
-- ✅ **Easy Integration**: Zero-config auto-configuration; just add the dependency
+- ✅ **Easy Integration**: Standalone microservice with REST API endpoints
 - ✅ **Reactive Support**: Built with Spring WebFlux and Project Reactor for non-blocking operations
 - ✅ **Multi-currency**: Supports any Paystack-supported currency (NGN, KES, USD, etc.)
 - ✅ **Resilience**: Includes circuit breaker, retry, and time limiter patterns
-- ✅ **Clean API**: Public DTOs hide internal Paystack implementation details
+- ✅ **Clean API**: RESTful endpoints for payment operations
 - ✅ **Well-documented**: Clear examples and configuration templates included
+- ✅ **No Dependencies Required**: Other services call via REST API without adding dependencies
 
 ## Requirements
 
 - Java 17+
 - Spring Boot 3.5.9+
 - Spring WebFlux (for reactive operations)
+- Docker (optional, for containerized deployment)
 
-## Installation
+## Installation & Deployment
 
-### Maven
+### Option 1: Local Development
 
-Add the following dependency to your `pom.xml`:
-
-```xml
-<dependency>
-    <groupId>com.paystack</groupId>
-    <artifactId>paystack-payment-starter</artifactId>
-    <version>1.0.0</version>
-</dependency>
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd paystack-payment-service
 ```
 
-### Gradle
+2. Configure your environment variables or `application.properties`:
+```bash
+export PAYSTACK_API_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
+```
 
-Add to your `build.gradle`:
+3. Run the service:
+```bash
+mvn spring-boot:run
+```
 
-```gradle
-implementation 'com.paystack:paystack-payment-starter:1.0.0'
+The service will start on `http://localhost:8080`
+
+### Option 2: Docker Deployment
+
+Build and run using Docker:
+```bash
+# Build the Docker image
+docker build -t paystack-payment-service:1.0.0 .
+
+# Run the container
+docker run -e PAYSTACK_API_KEY=sk_live_xxxx \
+           -e PAYSTACK_CALLBACK_URL=https://webhook.site/... \
+           -p 8080:8080 \
+           paystack-payment-service:1.0.0
 ```
 
 ## Configuration
 
-### 1. Add Properties to `application.properties` or `application.yml`
+### 1. Environment Variables (Recommended for Production)
+
+Set these environment variables before starting the service:
+
+```bash
+# Required
+PAYSTACK_API_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
+
+# Optional (defaults provided)
+PAYSTACK_API_URL=https://api.paystack.co
+PAYSTACK_CALLBACK_URL=https://yourapp.com/payment-callback
+```
+
+### 2. Application Properties (Development)
+
+Edit `application.properties` or `application.yml`:
 
 **application.properties:**
 ```properties
@@ -90,13 +121,6 @@ resilience4j:
         timeoutDuration: 5s
 ```
 
-### 2. Environment Variables (Optional)
-
-You can also use environment variables for sensitive configuration:
-
-```bash
-export PAYSTACK_API_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
-```
 
 Or in `.env` file (with Spring Cloud Config or similar):
 ```
@@ -105,187 +129,361 @@ PAYSTACK_API_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
 
 ## Usage
 
-The starter can be used in two ways:
+This is a **standalone microservice**. Other services call it via REST API endpoints.
 
-### Option 1: Library Dependency (Traditional)
-Add as a Maven dependency to your Spring Boot application and inject PaymentService directly.
-- **Best for**: Single application or tightly coupled microservices
-- **Setup**: 5 minutes
-- **See:** [Usage](#usage-as-library) section below
+### REST API Endpoints
 
-### Option 2: Standalone Microservice (Recommended for Microservices)
-Deploy as a separate microservice and call via REST API.
-- **Best for**: Microservices architecture, multiple independent services
-- **Setup**: 10 minutes
-- **No dependency needed** in other services!
-- **See:** [REST_API_GUIDE.md](REST_API_GUIDE.md) and [STANDALONE_SERVICE_GUIDE.md](STANDALONE_SERVICE_GUIDE.md)
+The service exposes the following endpoints:
+
+#### 1. Initialize Payment
+```http
+POST /api/payments/initialize
+Content-Type: application/json
+
+{
+  "amount": 50000,
+  "currency": "KES",
+  "email": "customer@example.com",
+  "description": "Order #12345",
+  "callbackUrl": "https://yourapp.com/payment-callback"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully",
+  "data": {
+    "paymentIntentId": "ORDER-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6",
+    "clientSecret": "AC_test_xxxxxxxxxxxxxxxxxxxx",
+    "status": "initialized",
+    "authorizationUrl": "https://checkout.paystack.com/...",
+    "accessCode": "access_code_xxx",
+    "reference": "ref_xxx"
+  }
+}
+```
+
+#### 2. Verify Payment
+```http
+GET /api/payments/verify?reference=ORDER-a1b2c3d4
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Payment verified successfully",
+  "data": true
+}
+```
+
+#### 3. Get Payment Details
+```http
+GET /api/payments/details?reference=ORDER-a1b2c3d4
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Payment details retrieved",
+  "data": {
+    "id": 123456789,
+    "status": "success",
+    "amount": 50000,
+    "currency": "KES",
+    "customer": {
+      "email": "customer@example.com",
+      "first_name": "John",
+      "last_name": "Doe"
+    }
+  }
+}
+```
+
+#### 4. Payment Callback (Called by Paystack)
+```http
+GET /api/payments/callback?reference=ref_xxx
+```
+
+#### 5. Health Check
+```http
+GET /api/payments/health
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Paystack payment service is running",
+  "data": "OK"
+}
+```
+
+### Example: Calling from Another Service (Node.js)
+
+```javascript
+// Initialize Payment
+const initResponse = await fetch('http://paystack-service:8080/api/payments/initialize', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    amount: 50000,
+    currency: 'KES',
+    email: 'customer@example.com',
+    description: 'Order #12345'
+  })
+});
+
+const { data } = await initResponse.json();
+const authUrl = data.authorizationUrl;
+const reference = data.paymentIntentId;
+
+// Redirect user to payment page
+window.location.href = authUrl;
+
+// After payment, verify
+const verifyResponse = await fetch(
+  `http://paystack-service:8080/api/payments/verify?reference=${reference}`
+);
+const verification = await verifyResponse.json();
+console.log('Payment successful:', verification.data);
+```
+
+### Example: Calling from Another Service (Java/Spring)
 
 ```java
-import com.paystack.payment.service.PaymentService;
+import org.springframework.web.reactive.function.client.WebClient;
 import com.paystack.payment.dto.PaymentIntentRequest;
-import com.paystack.payment.dto.PaymentIntentResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-@RestController
-@RequestMapping("/api/payments")
-public class PaymentController {
-
-    @Autowired
-    private PaymentService paymentService;
-
-    @PostMapping("/create")
-    public Mono<PaymentIntentResponse> createPayment(@RequestBody PaymentIntentRequest request) {
-        // PaymentService is auto-wired; just use it!
-        return paymentService.initializePayment(request)
-            .map(paymentService::toPaymentIntentResponse);
+@Component
+public class OrderService {
+    
+    private final WebClient webClient;
+    
+    public OrderService() {
+        this.webClient = WebClient.builder()
+            .baseUrl("http://paystack-service:8080")
+            .build();
     }
-
-    @GetMapping("/verify")
-    public Mono<Boolean> verifyPayment(@RequestParam String reference) {
-        return paymentService.verifyPaymentStatus(reference);
+    
+    public Mono<String> createPayment(Long amount, String email) {
+        PaymentIntentRequest request = PaymentIntentRequest.builder()
+            .amount(amount)
+            .currency("KES")
+            .email(email)
+            .description("Order payment")
+            .build();
+        
+        return webClient.post()
+            .uri("/api/payments/initialize")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(Map.class)
+            .map(response -> {
+                Map<String, Object> data = (Map<String, Object>) response.get("data");
+                return (String) data.get("authorizationUrl");
+            });
+    }
+    
+    public Mono<Boolean> verifyPayment(String reference) {
+        return webClient.get()
+            .uri("/api/payments/verify?reference={reference}", reference)
+            .retrieve()
+            .bodyToMono(Map.class)
+            .map(response -> (Boolean) response.get("data"));
     }
 }
 ```
 
-### Create Payment Request DTO
+### Example: Calling from Another Service (Python)
 
-```java
-PaymentIntentRequest request = PaymentIntentRequest.builder()
-    .amount(50000)                           // 50,000 kobo = 500 NGN
-    .currency("NGN")                         // Nigerian Naira
-    .email("customer@example.com")
-    .description("Purchase Order #12345")
-    .callbackUrl("https://yourapp.com/payment-callback")  // Optional
-    .build();
+```python
+import requests
 
-Mono<PaymentIntentResponse> response = paymentService.initializePayment(request)
-    .map(paymentService::toPaymentIntentResponse);
+# Initialize payment
+response = requests.post(
+    'http://paystack-service:8080/api/payments/initialize',
+    json={
+        'amount': 50000,
+        'currency': 'KES',
+        'email': 'customer@example.com',
+        'description': 'Order #12345'
+    }
+)
+
+data = response.json()['data']
+auth_url = data['authorizationUrl']
+reference = data['paymentIntentId']
+
+# Verify payment
+verify_response = requests.get(
+    f'http://paystack-service:8080/api/payments/verify?reference={reference}'
+)
+is_successful = verify_response.json()['data']
+print(f"Payment successful: {is_successful}")
 ```
 
-### Verify Payment Status
+### Request/Response Models
 
-```java
-paymentService.verifyPaymentStatus("ORDER-uuid-here")
-    .subscribe(
-        isSuccessful -> {
-            if (isSuccessful) {
-                System.out.println("Payment successful!");
-            } else {
-                System.out.println("Payment failed!");
-            }
-        },
-        error -> System.out.println("Error verifying payment: " + error.getMessage())
-    );
+#### PaymentIntentRequest
+
+```json
+{
+  "amount": 50000,           // Required: Amount in smallest currency unit
+  "currency": "KES",         // Required: Currency code
+  "email": "user@example.com", // Required: Customer email
+  "description": "Order details", // Optional: Payment description
+  "callbackUrl": "https://..." // Optional: Custom callback URL
+}
 ```
 
-### Full Example: Payment Controller
+#### PaymentIntentResponse
 
-```java
-import com.paystack.payment.dto.PaymentIntentRequest;
-import com.paystack.payment.dto.PaymentIntentResponse;
-import com.paystack.payment.service.PaymentService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
-
-@RestController
-@RequestMapping("/api/checkout")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*")
-public class CheckoutController {
-    
-    private final PaymentService paymentService;
-
-    @PostMapping("/payment-intent")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Mono<PaymentIntentResponse> createPaymentIntent(
-        @Valid @RequestBody PaymentIntentRequest request
-    ) {
-        return paymentService.initializePayment(request)
-            .map(paymentService::toPaymentIntentResponse);
-    }
-
-    @PostMapping("/verify-payment")
-    public Mono<Boolean> verifyPayment(@RequestParam String reference) {
-        return paymentService.verifyPaymentStatus(reference);
-    }
-
-    @GetMapping("/paystack/callback")
-    public Mono<String> paystackCallback(@RequestParam String reference) {
-        // Called by Paystack after payment
-        return paymentService.verifyPaymentStatus(reference)
-            .map(success -> success ?
-                "redirect:/payment-success?reference=" + reference :
-                "redirect:/payment-failed?reference=" + reference);
-    }
+```json
+{
+  "paymentIntentId": "ORDER-uuid",
+  "clientSecret": "AC_test_xxxx",
+  "status": "initialized",
+  "authorizationUrl": "https://checkout.paystack.com/...",
+  "accessCode": "access_code_xxx",
+  "reference": "ref_xxx"
 }
 ```
 
 ## API Reference
 
+### REST API Endpoints
+
+#### 1. POST /api/payments/initialize
+Initializes a Paystack payment session.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/payments/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50000,
+    "currency": "KES",
+    "email": "customer@example.com",
+    "description": "Order #12345"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment initialized successfully",
+  "data": {
+    "paymentIntentId": "ORDER-uuid",
+    "clientSecret": "AC_test_xxxx",
+    "status": "initialized",
+    "authorizationUrl": "https://checkout.paystack.com/...",
+    "accessCode": "access_code_xxx",
+    "reference": "ref_xxx"
+  }
+}
+```
+
+#### 2. GET /api/payments/verify
+Verifies a payment transaction by reference.
+
+**Request:**
+```bash
+curl -X GET "http://localhost:8080/api/payments/verify?reference=ORDER-uuid"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment verified successfully",
+  "data": true
+}
+```
+
+#### 3. GET /api/payments/details
+Get detailed payment information from Paystack.
+
+**Request:**
+```bash
+curl -X GET "http://localhost:8080/api/payments/details?reference=ORDER-uuid"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Payment details retrieved",
+  "data": {
+    "id": 123456789,
+    "status": "success",
+    "amount": 50000,
+    "currency": "KES",
+    "customer": {
+      "email": "customer@example.com",
+      "first_name": "John",
+      "last_name": "Doe"
+    }
+  }
+}
+```
+
+#### 4. GET /api/payments/callback
+Handle Paystack callback (called by Paystack after payment).
+
+**Request:**
+```bash
+curl -X GET "http://localhost:8080/api/payments/callback?reference=ref_xxx"
+```
+
+#### 5. GET /api/payments/health
+Health check endpoint.
+
+**Request:**
+```bash
+curl -X GET http://localhost:8080/api/payments/health
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Paystack payment service is running",
+  "data": "OK"
+}
+```
+
+## Internal Service Reference
+
+For developers working on the service itself, here are the key internal methods:
+
 ### PaymentService Methods
 
 #### 1. `initializePayment(PaymentIntentRequest request)`
-Initializes a Paystack payment session.
-
-**Parameters:**
-- `request`: PaymentIntentRequest object with amount, currency, email, etc.
+Initializes a Paystack payment session internally.
 
 **Returns:** `Mono<PaystackInitializeResponse>`
 
-**Example:**
-```java
-PaymentIntentRequest req = PaymentIntentRequest.builder()
-    .amount(100000)
-    .currency("KES")
-    .email("user@example.com")
-    .build();
-
-Mono<PaystackInitializeResponse> response = paymentService.initializePayment(req);
-```
-
 #### 2. `verifyPayment(String reference)`
-Verifies a payment transaction by reference.
-
-**Parameters:**
-- `reference`: Transaction reference returned from initialization
+Verifies a payment transaction internally.
 
 **Returns:** `Mono<PaystackVerifyResponse>`
 
-**Example:**
-```java
-Mono<PaystackVerifyResponse> response = paymentService.verifyPayment("ORDER-12345");
-```
-
 #### 3. `verifyPaymentStatus(String reference)`
-Convenience method to check if payment was successful.
+Checks if payment was successful internally.
 
-**Parameters:**
-- `reference`: Transaction reference
-
-**Returns:** `Mono<Boolean>` (true if successful, false otherwise)
-
-**Example:**
-```java
-Mono<Boolean> isSuccessful = paymentService.verifyPaymentStatus("ORDER-12345");
-```
+**Returns:** `Mono<Boolean>`
 
 #### 4. `toPaymentIntentResponse(PaystackInitializeResponse paystackResponse)`
 Converts internal Paystack response to public DTO.
 
-**Parameters:**
-- `paystackResponse`: Internal Paystack response
-
 **Returns:** `PaymentIntentResponse`
 
-**Example:**
-```java
-PaymentIntentResponse publicResponse = paymentService.toPaymentIntentResponse(paystackResponse);
-```
 
 ## DTOs
 
@@ -332,93 +530,107 @@ The PaymentService includes resilience patterns to handle failures gracefully:
 ### Time Limiter
 - Timeouts after 5 seconds
 
-### Custom Error Handling
-
-```java
-paymentService.initializePayment(request)
-    .map(paymentService::toPaymentIntentResponse)
-    .onErrorResume(error -> {
-        log.error("Payment initialization failed: {}", error.getMessage());
-        return Mono.error(new PaymentException("Could not initialize payment"));
-    })
-    .subscribe(
-        response -> System.out.println("Payment initialized: " + response.getAuthorizationUrl()),
-        error -> System.out.println("Error: " + error.getMessage())
-    );
-```
-
 ## Testing
 
-### Mock PaymentService in Tests
+### Using Postman
 
-```java
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import static org.mockito.Mockito.*;
+A comprehensive Postman collection is provided in `Postman_Collection.json` for testing all endpoints.
 
-@TestConfiguration
-public class TestPaymentConfig {
-    
-    @Bean
-    @Primary
-    public PaymentService mockPaymentService() {
-        return mock(PaymentService.class);
-    }
-}
+**To import:**
+1. Open Postman
+2. Click `File` → `Import`
+3. Select `Postman_Collection.json`
+4. Start testing the endpoints
 
-@SpringBootTest
-@Import(TestPaymentConfig.class)
-class PaymentControllerTest {
-    
-    @MockBean
-    private PaymentService paymentService;
-    
-    @Test
-    void testPaymentInitialization() {
-        // Setup mock
-        PaymentIntentResponse mockResponse = PaymentIntentResponse.builder()
-            .authorizationUrl("https://checkout.paystack.com/...")
-            .paymentIntentId("ORDER-123")
-            .build();
-            
-        when(paymentService.initializePayment(any()))
-            .thenReturn(Mono.just(mockResponse));
-        
-        // Test
-        // ...
-    }
-}
+**Test Flow:**
+1. Health Check - verify service is running
+2. Initialize Payment - create a new payment
+3. Verify Payment - check payment status
+4. Get Payment Details - retrieve full payment info
+5. Callback - simulate Paystack callback
+
+### Testing with cURL
+
+```bash
+# Health check
+curl -X GET http://localhost:8080/api/payments/health
+
+# Initialize payment
+curl -X POST http://localhost:8080/api/payments/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50000,
+    "currency": "KES",
+    "email": "test@example.com",
+    "description": "Test payment"
+  }'
+
+# Verify payment (replace REFERENCE with actual reference)
+curl -X GET "http://localhost:8080/api/payments/verify?reference=REFERENCE"
+
+# Get details (replace REFERENCE with actual reference)
+curl -X GET "http://localhost:8080/api/payments/details?reference=REFERENCE"
+```
+
+### Testing with Docker
+
+```bash
+# Build image
+docker build -t paystack-payment-service:1.0.0 .
+
+# Run with test configuration
+docker run \
+  -e PAYSTACK_API_KEY=sk_test_95764a2e73d66e1fe944ea4c0deba3386f70f46f \
+  -e PAYSTACK_CALLBACK_URL=https://webhook.site/0a43d12b-660c-4fb3-84ef-9b7b9b367eb0 \
+  -p 8080:8080 \
+  paystack-payment-service:1.0.0
+
+# Test health endpoint
+curl http://localhost:8080/api/payments/health
 ```
 
 ## Support for Multi-Currency
 
-The starter supports all Paystack-supported currencies. When creating a payment request, specify the currency:
+The service supports all Paystack-supported currencies. When creating a payment request via the API, specify the currency:
 
-```java
-// Nigerian Naira
-PaymentIntentRequest ngnRequest = PaymentIntentRequest.builder()
-    .amount(50000)     // 50,000 kobo = 500 NGN
-    .currency("NGN")
-    .email("user@example.com")
-    .build();
+```bash
+# Nigerian Naira
+curl -X POST http://localhost:8080/api/payments/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50000,
+    "currency": "NGN",
+    "email": "user@example.com",
+    "description": "Payment in NGN"
+  }'
 
-// Kenya Shillings (with M-Pesa support)
-PaymentIntentRequest kesRequest = PaymentIntentRequest.builder()
-    .amount(50000)     // 50,000 cents = 500 KES
-    .currency("KES")
-    .email("user@example.com")
-    .build();
+# Kenya Shillings (with M-Pesa support)
+curl -X POST http://localhost:8080/api/payments/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 50000,
+    "currency": "KES",
+    "email": "user@example.com",
+    "description": "Payment in KES"
+  }'
 
-// US Dollars
-PaymentIntentRequest usdRequest = PaymentIntentRequest.builder()
-    .amount(5000)      // 5,000 cents = 50 USD
-    .currency("USD")
-    .email("user@example.com")
-    .build();
+# US Dollars
+curl -X POST http://localhost:8080/api/payments/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 5000,
+    "currency": "USD",
+    "email": "user@example.com",
+    "description": "Payment in USD"
+  }'
 ```
 
 ## Troubleshooting
+
+### Service won't start
+- Ensure `PAYSTACK_API_KEY` environment variable is set
+- Check that port 8080 is not in use
+- Verify Java 17+ is installed
 
 ### "Paystack API key is not configured"
 - Ensure `paystack.api.key` is set in `application.properties` or via `PAYSTACK_API_KEY` environment variable
@@ -433,14 +645,22 @@ PaymentIntentRequest usdRequest = PaymentIntentRequest.builder()
 - Increase `resilience4j.timelimiter.instances.paymentService.timeoutDuration`
 - Check if Paystack API is reachable from your network
 
+### Cannot connect to service from another container
+- Ensure both containers are on the same Docker network
+- Use container hostname instead of `localhost` (e.g., `http://paystack-service:8080`)
+- Check firewall rules if running on a separate machine
+
 ## Version History
 
-### 1.0.0 (2025-02-08)
-- Initial release
-- Payment initialization
-- Payment verification
+### 1.0.0 (2026-02-08)
+- Initial release as standalone microservice
+- REST API endpoints for payment operations
+- Payment initialization, verification, and details retrieval
 - Circuit breaker, retry, and time limiter patterns
-- Multi-currency support
+- Multi-currency support (NGN, KES, USD, etc.)
+- Docker containerization support
+- Comprehensive Postman collection for testing
+- Webhook support for Paystack callbacks
 
 ## Contributing
 
@@ -460,12 +680,15 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 For issues, questions, or suggestions, please open an issue on GitHub.
 
+For real-time payment testing, use the webhook endpoint: https://webhook.site/0a43d12b-660c-4fb3-84ef-9b7b9b367eb0
+
 ## Additional Resources
 
 - [Paystack API Documentation](https://paystack.com/docs/api/)
 - [Spring WebFlux Guide](https://spring.io/guides/gs/reactive-rest-service/)
 - [Resilience4j Documentation](https://resilience4j.readme.io/)
-- [Spring Boot Auto-Configuration](https://spring.io/guides/gs/spring-boot/)
+- [Spring Boot Reference Guide](https://spring.io/projects/spring-boot)
+- [Docker Documentation](https://docs.docker.com/)
 
 ---
 
