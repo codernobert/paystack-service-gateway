@@ -678,7 +678,7 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 ## Support
 
-For issues, questions, or suggestions, please open an issue on GitHub.
+For issues, questions, or suggestions, please open an issue on GitHub or reach me at: norbertokoth01@gmail.com
 
 For real-time payment testing, use the webhook endpoint: https://webhook.site/0a43d12b-660c-4fb3-84ef-9b7b9b367eb0
 
