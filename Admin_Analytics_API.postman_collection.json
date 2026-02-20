@@ -1,0 +1,559 @@
+{
+  "info": {
+    "_postman_id": "analytics-collection-2026",
+    "name": "📊 Admin Analytics Dashboard API",
+    "description": "Complete collection for testing Analytics endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Get JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains JWT token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('accessToken');",
+                  "    ",
+                  "    // Save token for use in other requests",
+                  "    if (jsonData.data.accessToken) {",
+                  "        pm.environment.set('jwt_token', jsonData.data.accessToken);",
+                  "        pm.environment.set('auth_header', 'Bearer ' + jsonData.data.accessToken);",
+                  "        console.log('Token saved to environment');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"admin@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login with admin credentials to get JWT token for testing"
+          },
+          "response": []
+        },
+        {
+          "name": "Register - Create Admin User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"User created successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('userId');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"firstName\\\": \\\"Admin\\\",\\n  \\\"lastName\\\": \\\"User\\\",\\n  \\\"email\\\": \\\"admin@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\",\\n  \\\"role\\\": \\\"ADMIN\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Create a new admin user account for testing"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard Endpoints",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains dashboard summary\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('totalRevenue');",
+                  "    pm.expect(jsonData.data).to.have.property('totalOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('totalCustomers');",
+                  "    pm.expect(jsonData.data).to.have.property('totalProductsSold');",
+                  "    pm.expect(jsonData.data).to.have.property('conversionRate');",
+                  "    pm.expect(jsonData.data).to.have.property('averageOrderValue');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "dashboard"
+              ]
+            },
+            "description": "Get main dashboard summary with KPI metrics (Requires JWT token)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Revenue Analytics",
+      "item": [
+        {
+          "name": "Get Daily Revenue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains daily revenue data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('dailyRevenue');",
+                  "    pm.expect(jsonData.data).to.have.property('totalRevenue');",
+                  "    pm.expect(jsonData.data).to.have.property('revenueGrowth');",
+                  "    pm.expect(jsonData.data).to.have.property('growthTrend');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/revenue?period=daily",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "daily"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Weekly Revenue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains weekly revenue data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('weeklyRevenue');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/revenue?period=weekly",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "weekly"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monthly Revenue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains monthly revenue data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('monthlyRevenue');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/revenue?period=monthly",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "monthly"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Order Analytics",
+      "item": [
+        {
+          "name": "Get Order Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains order analytics\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('totalOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('pendingOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('processingOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('confirmedOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('shippedOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('deliveredOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('cancelledOrders');",
+                  "    pm.expect(jsonData.data).to.have.property('statusDistribution');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "orders"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Product Analytics",
+      "item": [
+        {
+          "name": "Get Product Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains product analytics\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('totalProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('activeProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('inactiveProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('lowStockProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('topSellingProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('topRevenueProducts');",
+                  "    pm.expect(jsonData.data).to.have.property('lowStockWarnings');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "products"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customer Analytics",
+      "item": [
+        {
+          "name": "Get Customer Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains customer analytics\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('totalCustomers');",
+                  "    pm.expect(jsonData.data).to.have.property('activeCustomers');",
+                  "    pm.expect(jsonData.data).to.have.property('newCustomersThisMonth');",
+                  "    pm.expect(jsonData.data).to.have.property('returningCustomers');",
+                  "    pm.expect(jsonData.data).to.have.property('customerRetentionRate');",
+                  "    pm.expect(jsonData.data).to.have.property('averageCustomerLifetimeValue');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/customers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "customers"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Analytics",
+      "item": [
+        {
+          "name": "Get Payment Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains payment analytics\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('totalPayments');",
+                  "    pm.expect(jsonData.data).to.have.property('successfulPayments');",
+                  "    pm.expect(jsonData.data).to.have.property('failedPayments');",
+                  "    pm.expect(jsonData.data).to.have.property('pendingPayments');",
+                  "    pm.expect(jsonData.data).to.have.property('totalPaymentValue');",
+                  "    pm.expect(jsonData.data).to.have.property('successRate');",
+                  "    pm.expect(jsonData.data).to.have.property('paymentMethods');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "analytics",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set base URL if not already set",
+          "if (!pm.environment.get(\"base_url\")) {",
+          "    pm.environment.set(\"base_url\", \"http://localhost:8080\");",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

@@ -1,16 +1,11 @@
 package com.paystack.payment.service;
 
-import com.paystack.payment.config.PaystackConfigProperties;
-import com.paystack.payment.dto.PaymentIntentRequest;
-import com.paystack.payment.dto.PaymentIntentResponse;
-import com.paystack.payment.dto.internal.PaystackInitializeRequest;
-import com.paystack.payment.dto.internal.PaystackInitializeResponse;
-import com.paystack.payment.dto.internal.PaystackVerifyResponse;
+import com.paystack.payment.dto.*;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -21,22 +16,24 @@ import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Service for Paystack payment operations.
- * Handles payment initialization, verification, and status checking.
- */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class PaymentService {
+    
+    @Value("${paystack.api.key}")
+    private String paystackApiKey;
 
-    private final PaystackConfigProperties config;
+    @Value("${paystack.api.url}")
+    private String paystackApiUrl;
+
+//    @Value("https://webhook.site/c430e472-8d7a-408b-90e9-e52d61a60069")
+    private String callbackUrl;
+
     private WebClient webClient;
 
     @PostConstruct
     public void init() {
-        if (config.getApi().getKey() == null || config.getApi().getKey().isEmpty() ||
-            config.getApi().getKey().contains("YOUR_PAYSTACK")) {
+        if (paystackApiKey == null || paystackApiKey.isEmpty() || paystackApiKey.contains("YOUR_PAYSTACK")) {
             log.error("=======================================================");
             log.error("PAYSTACK API KEY NOT CONFIGURED!");
             log.error("Please set a valid Paystack API key in application.properties");
@@ -46,21 +43,17 @@ public class PaymentService {
         }
 
         this.webClient = WebClient.builder()
-            .baseUrl(config.getApi().getUrl())
-            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.getApi().getKey())
+            .baseUrl(paystackApiUrl)
+            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + paystackApiKey)
             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             .build();
 
-        log.info("Paystack API initialized successfully with key: {}****",
-            config.getApi().getKey().substring(0, Math.min(8, config.getApi().getKey().length())));
+        log.info("Paystack API initialized successfully with key: {}****", paystackApiKey.substring(0, 8));
     }
-
+    
     /**
-     * Initialize a Paystack transaction.
-     * This creates a payment session and returns the authorization URL for the user to complete payment.
-     *
-     * @param request Payment intent request containing amount, currency, email, etc.
-     * @return Paystack initialize response with authorization URL
+     * Initialize a Paystack transaction
+     * This creates a payment session and returns the authorization URL for the user to complete payment
      */
     @CircuitBreaker(name = "paymentService", fallbackMethod = "initializePaymentFallback")
     @Retry(name = "paymentService")
@@ -70,12 +63,12 @@ public class PaymentService {
             log.info("Initializing Paystack payment for amount: {} {}", request.getAmount(), request.getCurrency());
 
             // Generate unique reference
-            String reference = "ORDER-" + UUID.randomUUID().toString();
+            String reference = "PAYMENT_ID-" + UUID.randomUUID().toString();
 
             // Use callback URL from request if provided, otherwise use the configured one
             String effectiveCallbackUrl = (request.getCallbackUrl() != null && !request.getCallbackUrl().isEmpty())
                 ? request.getCallbackUrl()
-                : config.getCallback().getUrl();
+                : callbackUrl;
 
             log.info("Using callback URL: {}", effectiveCallbackUrl);
 
@@ -117,13 +110,10 @@ public class PaymentService {
                 .doOnError(e -> log.error("Error initializing Paystack payment", e));
         });
     }
-
+    
     /**
-     * Verify a Paystack transaction.
-     * Call this after the user completes payment to verify the transaction status.
-     *
-     * @param reference Transaction reference to verify
-     * @return Paystack verify response with transaction details
+     * Verify a Paystack transaction
+     * Call this after the user completes payment to verify the transaction status
      */
     public Mono<PaystackVerifyResponse> verifyPayment(String reference) {
         return webClient.get()
@@ -140,12 +130,9 @@ public class PaymentService {
             })
             .doOnError(e -> log.error("Error verifying payment for reference: {}", reference, e));
     }
-
+    
     /**
-     * Check if payment was successful.
-     *
-     * @param reference Transaction reference to check
-     * @return True if payment was successful, false otherwise
+     * Check if payment was successful
      */
     public Mono<Boolean> verifyPaymentStatus(String reference) {
         return verifyPayment(reference)
@@ -153,13 +140,9 @@ public class PaymentService {
                 "success".equalsIgnoreCase(response.getData().getStatus()))
             .onErrorReturn(false);
     }
-
+    
     /**
-     * Convert PaystackInitializeResponse to PaymentIntentResponse for the public API.
-     * This hides the internal Paystack DTOs from consuming services.
-     *
-     * @param paystackResponse Internal Paystack response
-     * @return Public PaymentIntentResponse
+     * Convert PaystackInitializeResponse to PaymentIntentResponse for backward compatibility
      */
     public PaymentIntentResponse toPaymentIntentResponse(PaystackInitializeResponse paystackResponse) {
         if (paystackResponse.isStatus() && paystackResponse.getData() != null) {
@@ -173,10 +156,7 @@ public class PaymentService {
         throw new RuntimeException("Failed to initialize payment: " + paystackResponse.getMessage());
     }
 
-    /**
-     * Fallback method for circuit breaker.
-     * Called when the payment service is unavailable.
-     */
+    // Fallback method for circuit breaker
     private Mono<PaystackInitializeResponse> initializePaymentFallback(PaymentIntentRequest request, Exception e) {
         log.error("Payment service fallback triggered", e);
         return Mono.error(new RuntimeException("Payment service temporarily unavailable. Please try again later."));
