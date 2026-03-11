@@ -12,12 +12,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentIntentRequest {
+
+
+    // --- Payment details ---
     @NotNull(message = "Amount is required")
     private Long amount;
-    
+
     @NotBlank(message = "Currency is required")
     private String currency;
-    
+
     private String description;
 
     private String email; // Customer email (required for Paystack)
